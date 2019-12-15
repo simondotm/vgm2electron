@@ -1,0 +1,26 @@
+#################
+## ignores
+#################
+*.exo
+*.lz4
+*.part
+*.dump
+*.split
+*.splitdif
+*.huf
+*.splitopt
+*.lz
+*.bin
+*.lzw
+*.zst
+packer/
+wip/
+data/
+testvgm/
+*.pyc
+lemmings/
+*.txt
+
+
+
+
