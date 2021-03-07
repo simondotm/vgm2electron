@@ -44,6 +44,22 @@ class VgmElectron:
 	OUTPUT_RAWDATA = False # output raw dumps of the data that was compressed by LZ4/Huffman
 	VERBOSE = True
 
+	# 0-3 represents approx the loudest 50% of volumes (=ON), 4-15 are the quietest 50% (=OFF) 
+	ATTENTUATION_THRESHOLD1 = 4
+	ATTENTUATION_THRESHOLD2 = 6
+	ATTENTUATION_THRESHOLD3 = 8
+
+	# define the number of octaves to transpose whole song by, in case too much bass getting lost
+	TRANSPOSE_OCTAVES1 = 0
+	TRANSPOSE_OCTAVES2 = 0
+	TRANSPOSE_OCTAVES3 = -1
+
+	ENABLE_CHANNEL1 = True
+	ENABLE_CHANNEL2 = True
+	ENABLE_CHANNEL3 = True
+
+
+
 	def __init__(self):
 		print("init")
 
@@ -267,18 +283,10 @@ class VgmElectron:
 
 
 		# convert the register data to a vgm stream
-		sample_interval = 882 # 50hz - TODO: use frame rate
+		sample_interval = int(44100 / vgm.metadata['rate']) # 882 # 50hz - TODO: use frame rate
+		#print("sample_interval=" + str(sample_interval))
 
-		# 0-3 represents approx the loudest 50% of volumes (=ON), 4-15 are the quietest 50% (=OFF) 
-		ATTENTUATION_THRESHOLD1 = 4
-		ATTENTUATION_THRESHOLD2 = 6
-		ATTENTUATION_THRESHOLD3 = 8
-
-		# define the number of octaves to transpose whole song by, in case too much bass getting lost
-		TRANSPOSE_OCTAVES1 = 0
-		TRANSPOSE_OCTAVES2 = 0
-		TRANSPOSE_OCTAVES3 = -1
-		USE_TONE3 = True
+		USE_TONE3 = VgmElectron.ENABLE_CHANNEL3 # True
 
 		# TODO: make these all parameters
 		# Add channel filter option
@@ -313,16 +321,24 @@ class VgmElectron:
 				if r > 6:
 					register_data = registers[r][i]
 					# apply the threshold for each channel
-					threshold = ATTENTUATION_THRESHOLD1
+					threshold = VgmElectron.ATTENTUATION_THRESHOLD1
 					if r == 8:
-						threshold = ATTENTUATION_THRESHOLD2
+						threshold = VgmElectron.ATTENTUATION_THRESHOLD2
 					if r == 9:
-						threshold = ATTENTUATION_THRESHOLD3
+						threshold = VgmElectron.ATTENTUATION_THRESHOLD3
 
 					# if its a volume, map to loudest volume or no volume (using logarithmic scale)
 					if register_data < threshold:
 						register_data = 0 # full volume
 					else:
+						register_data = 15 # zero volume
+
+
+					if r == 7 and VgmElectron.ENABLE_CHANNEL1 == False:
+						register_data = 15 # zero volume
+					if r == 8 and VgmElectron.ENABLE_CHANNEL2 == False:
+						register_data = 15 # zero volume
+					if r == 9 and VgmElectron.ENABLE_CHANNEL3 == False:
 						register_data = 15 # zero volume
 
 					registers[r][i] = register_data
@@ -385,9 +401,9 @@ class VgmElectron:
 			# transpose
 			#if TRANSPOSE_OCTAVES > 0:
 			print(" Transposing ")
-			retune(TRANSPOSE_OCTAVES1, 0,1,7)
-			retune(TRANSPOSE_OCTAVES2, 2,3,8)
-			retune(TRANSPOSE_OCTAVES3, 4,5,9)
+			retune(VgmElectron.TRANSPOSE_OCTAVES1, 0,1,7)
+			retune(VgmElectron.TRANSPOSE_OCTAVES2, 2,3,8)
+			retune(VgmElectron.TRANSPOSE_OCTAVES3, 4,5,9)
 
 			#--------------------------------------------------------------
 			# Step 3 - mix the 2 primary channels down to 1 channel
@@ -545,8 +561,8 @@ class VgmElectron:
 				vgm_stream.extend( struct.pack('B', 0x62) ) 
 			else:
 				vgm_stream.extend( struct.pack('B', 0x61) ) 
-				vgm_stream.extend( struct.pack('B', sample_interval % 256) ) 
-				vgm_stream.extend( struct.pack('B', sample_interval / 256) )                         
+				vgm_stream.extend( struct.pack('B', int(sample_interval % 256)) ) 
+				vgm_stream.extend( struct.pack('B', int(sample_interval / 256)) )                         
 	
 		
 		# END command
@@ -593,6 +609,10 @@ if __name__ == '__main__':
 	parser.add_argument("input", help="VGM source file (must be single SN76489 PSG format) [input]")
 	parser.add_argument("-o", "--output", metavar="<output>", help="write VGC file <output> (default is '[input].vgc')")
 	parser.add_argument("-v", "--verbose", help="Enable verbose mode", action="store_true")
+	parser.add_argument("-a", "--attenuation", default="444", metavar="<nnn>", help="Set attenuation threshold for each channel, 3 character string where each character is 0-F and 0 is loudest, 4 is 50%, F is quietest, default: 444")
+	parser.add_argument("-t", "--transpose", default="000", metavar="<nnn>", help="Set octaves to transpose for each channel, where 1 is +1 octave and F is -1 octave.")
+	parser.add_argument("-c", "--channels", default="123", metavar="[1][2][3]", help="Set which channels will be included in the conversion, default 123, which means all 3 channels")
+
 	args = parser.parse_args()
 
 
@@ -600,6 +620,39 @@ if __name__ == '__main__':
 	dst = args.output
 	if dst == None:
 		dst = os.path.splitext(src)[0] + ".electron.vgm"
+
+	# attenuation options
+	attenuation = args.attenuation
+	if (len(attenuation) != 3):
+		print("ERROR: attenuation must be 3 values eg. '444'")
+		sys.exit()
+	#print("attenuation=" + attenuation)
+	VgmElectron.ATTENTUATION_THRESHOLD1 = int(attenuation[0],16)
+	VgmElectron.ATTENTUATION_THRESHOLD2 = int(attenuation[1],16)
+	VgmElectron.ATTENTUATION_THRESHOLD3 = int(attenuation[2],16)
+
+	# transpose options
+	transpose = args.transpose
+	if (len(transpose) != 3):
+		print("ERROR: transpose must be 3 values eg. '000'")
+		sys.exit()
+	#print("transpose=" + transpose)
+	#         0 1 2 3 4 5 6 7  8  9  a  b  c  d  e  f
+	ttable = [0,1,2,3,4,5,6,7,-8,-7,-6,-5,-4,-3,-2,-1]
+	VgmElectron.TRANSPOSE_OCTAVES1 = ttable[ int(transpose[0],16) ]
+	VgmElectron.TRANSPOSE_OCTAVES2 = ttable[ int(transpose[1],16) ]
+	VgmElectron.TRANSPOSE_OCTAVES3 = ttable[ int(transpose[2],16) ]
+
+	# channel options
+	print(args.channels)
+	VgmElectron.ENABLE_CHANNEL1 = args.channels.find("1") >= 0
+	VgmElectron.ENABLE_CHANNEL2 = args.channels.find("2") >= 0
+	VgmElectron.ENABLE_CHANNEL3 = args.channels.find("3") >= 0
+
+
+	print("Channel 1: Enabled=" + str(VgmElectron.ENABLE_CHANNEL1) + ", Transpose=" + str(VgmElectron.TRANSPOSE_OCTAVES1) + ", Attenuation="+str(VgmElectron.ATTENTUATION_THRESHOLD1))
+	print("Channel 2: Enabled=" + str(VgmElectron.ENABLE_CHANNEL2) + ", Transpose=" + str(VgmElectron.TRANSPOSE_OCTAVES2) + ", Attenuation="+str(VgmElectron.ATTENTUATION_THRESHOLD2))
+	print("Channel 3: Enabled=" + str(VgmElectron.ENABLE_CHANNEL3) + ", Transpose=" + str(VgmElectron.TRANSPOSE_OCTAVES3) + ", Attenuation="+str(VgmElectron.ATTENTUATION_THRESHOLD3))
 
 	# check for missing files
 	if not os.path.isfile(src):
