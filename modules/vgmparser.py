@@ -735,10 +735,13 @@ class VgmStream:
 
 		# use filename if no author listed
 		if len(author) == 0:
-			author = basename(self.vgm_filename)
+			author = bytes(basename(self.vgm_filename), 'utf-8')
 
 		if len(author) > 254:
 			author = author[:254]
+		
+		print(author)
+
 		output_block.extend(struct.pack('B', len(author) + 1))	# author string length
 		output_block.extend(author)
 		output_block.extend(struct.pack('B', 0))				# zero terminator

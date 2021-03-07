@@ -45,14 +45,14 @@ class VgmElectron:
 	VERBOSE = True
 
 	# 0-3 represents approx the loudest 50% of volumes (=ON), 4-15 are the quietest 50% (=OFF) 
-	ATTENTUATION_THRESHOLD1 = 4
-	ATTENTUATION_THRESHOLD2 = 6
-	ATTENTUATION_THRESHOLD3 = 8
+	ATTENTUATION_THRESHOLD1 = 13
+	ATTENTUATION_THRESHOLD2 = 13
+	ATTENTUATION_THRESHOLD3 = 13
 
 	# define the number of octaves to transpose whole song by, in case too much bass getting lost
 	TRANSPOSE_OCTAVES1 = 0
 	TRANSPOSE_OCTAVES2 = 0
-	TRANSPOSE_OCTAVES3 = -1
+	TRANSPOSE_OCTAVES3 = 0 #-1
 
 	ENABLE_CHANNEL1 = True
 	ENABLE_CHANNEL2 = True
@@ -284,7 +284,7 @@ class VgmElectron:
 
 		# convert the register data to a vgm stream
 		sample_interval = int(44100 / vgm.metadata['rate']) # 882 # 50hz - TODO: use frame rate
-		#print("sample_interval=" + str(sample_interval))
+		print("sample_interval=" + str(sample_interval))
 
 		USE_TONE3 = VgmElectron.ENABLE_CHANNEL3 # True
 
