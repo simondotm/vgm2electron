@@ -7,3 +7,10 @@ vgm2electron.py examples\Repton-ingame.vgm >>log.txt
 vgm2electron.py examples\SONG_091.vgm >>log.txt
 
 vgm2electron.py examples\patarty-beeb.vgm >>log.txt
+
+vgm2electron.py examples\CrazeeRider-title.vgm >>log.txt
+vgm2electron.py examples\Firetrack-ingame.vgm >>log.txt
+vgm2electron.py examples\Firetrack-loader.vgm >>log.txt
+vgm2electron.py examples\StrykersRun-title.vgm >>log.txt
+
+

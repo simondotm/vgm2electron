@@ -411,90 +411,92 @@ class VgmElectron:
 			# map channel 2 to channel 1
 			# noise channel is completely ignored
 
-			print(" Downmix channels ")
-			#print("Frame " + str(i))
+			ENABLE_DOWNMIX = True
+			if ENABLE_DOWNMIX:
+				print(" Downmix channels ")
+				#print("Frame " + str(i))
 
-			vol1 = registers[7][i]
-			vol2 = registers[8][i]
-			vol3 = registers[9][i]
+				vol1 = registers[7][i]
+				vol2 = registers[8][i]
+				vol3 = registers[9][i]
 
-			tone_active = vol1 != 15 or vol2 != 15 or vol3 != 15
+				tone_active = vol1 != 15 or vol2 != 15 or vol3 != 15
 
-			if tone_active:
+				if tone_active:
 
 
-				print("  Tone active, mixing")
-				
-				output_tone = 1
-				
-				# interleaving of channels 1+2 is done on odd/even frames for a consistent effect
-				mix = (i % MIX_RATE) == 0 #(i & 1) == 0
-				# random is no good, thought it might average out but it sounds , well random
-				#mix = random.random() < 0.5 
-
-				# test code to see if modulo 3 any good, it wasn't
-				if False:
-
-					if channel_mix == 0 and vol1 != 0:
-						channel_mix = (channel_mix + 1) % 3
-
-					if channel_mix == 1 and vol2 != 0:
-						channel_mix = (channel_mix + 1) % 3
-
-					if channel_mix == 1 and vol3 != 0:
-						channel_mix = (channel_mix + 1) % 3
-
+					print("  Tone active, mixing")
 					
+					output_tone = 1
+					
+					# interleaving of channels 1+2 is done on odd/even frames for a consistent effect
+					mix = (i % MIX_RATE) == 0 #(i & 1) == 0
+					# random is no good, thought it might average out but it sounds , well random
+					#mix = random.random() < 0.5 
 
-					output_tone = (channel_mix % 3) + 1
-					print("output tone=" + str(output_tone))
-					channel_mix = (channel_mix + 1) % 3
+					# test code to see if modulo 3 any good, it wasn't
+					if False:
+
+						if channel_mix == 0 and vol1 != 0:
+							channel_mix = (channel_mix + 1) % 3
+
+						if channel_mix == 1 and vol2 != 0:
+							channel_mix = (channel_mix + 1) % 3
+
+						if channel_mix == 1 and vol3 != 0:
+							channel_mix = (channel_mix + 1) % 3
+
 						
 
-				if True:
+						output_tone = (channel_mix % 3) + 1
+						print("output tone=" + str(output_tone))
+						channel_mix = (channel_mix + 1) % 3
+							
 
-					# detect if channel 1 needs priority this frame
-					# - its volume is on, and the alternative frame mix flag is good
-					c1p = vol1 == 0 and mix
+					if True:
 
-					# don't give channel 2 priority if tone is the same and channel1 is playing
-					c1f = (registers[1][i] << 4) + registers[0][i] 
-					c2f = (registers[3][i] << 4) + registers[2][i] 
-					sametone = (c1f == c2f/2) or (c1f == c2f * 2) or (c1f == c2f)
-					sametone = sametone and (vol1 == vol2) and (vol1 == 0)
+						# detect if channel 1 needs priority this frame
+						# - its volume is on, and the alternative frame mix flag is good
+						c1p = vol1 == 0 and mix
 
-					if vol1 == 0 and sametone: #diff < 100: #registers[0][i] == registers[2][i] and registers[1][i] == registers[2][i] and vol1 == 0:
-						c1p = True
-						print("  NOTE: channel 1 & channel 2 have same tone")
+						# don't give channel 2 priority if tone is the same and channel1 is playing
+						c1f = (registers[1][i] << 4) + registers[0][i] 
+						c2f = (registers[3][i] << 4) + registers[2][i] 
+						sametone = (c1f == c2f/2) or (c1f == c2f * 2) or (c1f == c2f)
+						sametone = sametone and (vol1 == vol2) and (vol1 == 0)
 
-					
+						if vol1 == 0 and sametone: #diff < 100: #registers[0][i] == registers[2][i] and registers[1][i] == registers[2][i] and vol1 == 0:
+							c1p = True
+							print("  NOTE: channel 1 & channel 2 have same tone")
 
-					# replace channel 1 data with channel 2 data
-					# if, channel2 is active, but c1 doesn't have priority this frame
-					if vol2 == 0 and not c1p:# and vol1 != 0:
-						output_tone = 2
+						
 
-					# if no volume on tone1, we can look at channel 3 too
-					if USE_TONE3:
-						#if registers[7][i] == 15:
-						if vol1 == 15 and vol2 == 15 and vol3 == 0 and not mix:# and not c1p and output_tone != 2:
-							print("tone3 active")
-							output_tone = 3
+						# replace channel 1 data with channel 2 data
+						# if, channel2 is active, but c1 doesn't have priority this frame
+						if vol2 == 0 and not c1p:# and vol1 != 0:
+							output_tone = 2
 
-				# pick which tone to output
-				if output_tone == 1:
-					# do nothing
-					output_tone = 1
-				elif output_tone == 2:
-					registers[0][i] = registers[2][i]
-					registers[1][i] = registers[3][i]
-					registers[7][i] = registers[8][i]
-				elif output_tone == 3:
-					registers[0][i] = registers[4][i]
-					registers[1][i] = registers[5][i]
-					registers[7][i] = registers[9][i]
-				else:
-					print("UNHANDLED CASE - output_tone not set")
+						# if no volume on tone1, we can look at channel 3 too
+						if USE_TONE3:
+							#if registers[7][i] == 15:
+							if vol1 == 15 and vol2 == 15 and vol3 == 0 and not mix:# and not c1p and output_tone != 2:
+								print("tone3 active")
+								output_tone = 3
+
+					# pick which tone to output
+					if output_tone == 1:
+						# do nothing
+						output_tone = 1
+					elif output_tone == 2:
+						registers[0][i] = registers[2][i]
+						registers[1][i] = registers[3][i]
+						registers[7][i] = registers[8][i]
+					elif output_tone == 3:
+						registers[0][i] = registers[4][i]
+						registers[1][i] = registers[5][i]
+						registers[7][i] = registers[9][i]
+					else:
+						print("UNHANDLED CASE - output_tone not set")
 
 
 
@@ -523,8 +525,11 @@ class VgmElectron:
 		control = [ 0x80, 0x00, 0xa0, 0x00, 0xc0, 0x00, 0xe0, 0x90, 0xb0, 0xd0, 0xf0 ]
 		#filter = [ 0,1,2,3,7,8 ]
 		#filter = [ 2,3,8 ]
-		filter = [ 0,1,7 ]
 		#filter = [ 0,1,2,3,4,5,6,7,8,9,10 ]
+		filter = [ 0,1,2,3,4,5,7,8,9 ]
+		if ENABLE_DOWNMIX:
+			filter = [ 0,1,7 ]
+		
 
 
 		last_tone3 = 255
