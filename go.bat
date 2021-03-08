@@ -1,4 +1,4 @@
-vgm2electron.py examples\bbcapple-palsms-3_2.vgm >log.txt
+vgm2electron.py examples\bbcapple-palsms-3_2.vgm -q 1 >log.txt
 vgm2electron.py examples\Galaforce.vgm >>log.txt
 vgm2electron.py examples\Galaforce2-title.vgm -a fff >>log.txt
 vgm2electron.py examples\MONGOLIA.vgm >>log.txt

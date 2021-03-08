@@ -45,9 +45,9 @@ class VgmElectron:
 	VERBOSE = True
 
 	# 0-3 represents approx the loudest 50% of volumes (=ON), 4-15 are the quietest 50% (=OFF) 
-	ATTENTUATION_THRESHOLD1 = 13
-	ATTENTUATION_THRESHOLD2 = 13
-	ATTENTUATION_THRESHOLD3 = 13
+	ATTENTUATION_THRESHOLD1 = 10
+	ATTENTUATION_THRESHOLD2 = 10
+	ATTENTUATION_THRESHOLD3 = 10
 
 	# define the number of octaves to transpose whole song by, in case too much bass getting lost
 	TRANSPOSE_OCTAVES1 = 0
@@ -58,6 +58,7 @@ class VgmElectron:
 	ENABLE_CHANNEL2 = True
 	ENABLE_CHANNEL3 = True
 
+	USE_TECHNIQUE = 2
 
 
 	def __init__(self):
@@ -420,7 +421,11 @@ class VgmElectron:
 				vol2 = registers[8][i]
 				vol3 = registers[9][i]
 
-				tone_active = vol1 != 15 or vol2 != 15 or vol3 != 15
+				tone1_active = vol1 != 15
+				tone2_active = vol2 != 15
+				tone3_active = vol3 != 15
+
+				tone_active = tone1_active or tone2_active or tone3_active
 
 				if tone_active:
 
@@ -429,69 +434,116 @@ class VgmElectron:
 					
 					output_tone = 1
 					
-					# interleaving of channels 1+2 is done on odd/even frames for a consistent effect
-					mix = (i % MIX_RATE) == 0 #(i & 1) == 0
-					# random is no good, thought it might average out but it sounds , well random
-					#mix = random.random() < 0.5 
 
-					# test code to see if modulo 3 any good, it wasn't
-					if False:
+					if self.USE_TECHNIQUE == 2:
 
-						if channel_mix == 0 and vol1 != 0:
-							channel_mix = (channel_mix + 1) % 3
-
-						if channel_mix == 1 and vol2 != 0:
-							channel_mix = (channel_mix + 1) % 3
-
-						if channel_mix == 1 and vol3 != 0:
-							channel_mix = (channel_mix + 1) % 3
-
-						
-
-						output_tone = (channel_mix % 3) + 1
-						print("output tone=" + str(output_tone))
-						channel_mix = (channel_mix + 1) % 3
-							
-
-					if True:
-
-						# detect if channel 1 needs priority this frame
-						# - its volume is on, and the alternative frame mix flag is good
-						c1p = vol1 == 0 and mix
-
-						# don't give channel 2 priority if tone is the same and channel1 is playing
 						c1f = (registers[1][i] << 4) + registers[0][i] 
 						c2f = (registers[3][i] << 4) + registers[2][i] 
-						sametone = (c1f == c2f/2) or (c1f == c2f * 2) or (c1f == c2f)
-						sametone = sametone and (vol1 == vol2) and (vol1 == 0)
+						c3f = (registers[5][i] << 4) + registers[4][i] 
 
-						if vol1 == 0 and sametone: #diff < 100: #registers[0][i] == registers[2][i] and registers[1][i] == registers[2][i] and vol1 == 0:
-							c1p = True
-							print("  NOTE: channel 1 & channel 2 have same tone")
+						active_channels = [ False, False, False ]
+						if tone1_active:
+							active_channels[0] = True
+							print("Channel 1 is active volume")
+						if tone2_active:
+							active_channels[1] = True
+							print("Channel 2 is active volume")
+						if tone3_active:
+							active_channels[2] = True
+							print("Channel 3 is active volume")
 
-						
+						# any channels playing the same frequency are filtered out
+						if tone1_active and tone2_active and c2f == c1f:
+							active_channels[1] = False
+							print("Channel 2 is same freq as Channel 1, filtered")
+						if tone1_active and tone3_active and c3f == c1f:
+							active_channels[2] = False
+							print("Channel 3 is same freq as Channel 1, filtered")
+						if tone2_active and tone3_active and c2f == c3f:
+							active_channels[2] = False
+							print("Channel 3 is same freq as Channel 2, filtered")
 
-						# replace channel 1 data with channel 2 data
-						# if, channel2 is active, but c1 doesn't have priority this frame
-						if vol2 == 0 and not c1p:# and vol1 != 0:
-							output_tone = 2
+						channel_count = 0
+						if active_channels[0]: channel_count += 1
+						if active_channels[1]: channel_count += 1
+						if active_channels[2]: channel_count += 1
 
-						# if no volume on tone1, we can look at channel 3 too
-						if USE_TONE3:
-							#if registers[7][i] == 15:
-							if vol1 == 15 and vol2 == 15 and vol3 == 0 and not mix:# and not c1p and output_tone != 2:
-								print("tone3 active")
-								output_tone = 3
+						print("channel_count=" + str(channel_count))
+						output_mix = []
+						if active_channels[0]: output_mix.append(1)
+						if active_channels[1]: output_mix.append(2)
+						if active_channels[2]: output_mix.append(3)
+
+						mix = (i % channel_count)
+						output_tone = output_mix[mix]
+					
+					
+					if self.USE_TECHNIQUE == 1:
+						# interleaving of channels 1+2 is done on odd/even frames for a consistent effect
+						mix = (i % MIX_RATE) == 0 #(i & 1) == 0
+						# random is no good, thought it might average out but it sounds , well random
+						#mix = random.random() < 0.5 
+
+						# test code to see if modulo 3 any good, it wasn't
+						if False:
+
+							if channel_mix == 0 and vol1 != 0:
+								channel_mix = (channel_mix + 1) % 3
+
+							if channel_mix == 1 and vol2 != 0:
+								channel_mix = (channel_mix + 1) % 3
+
+							if channel_mix == 1 and vol3 != 0:
+								channel_mix = (channel_mix + 1) % 3
+
+							
+
+							output_tone = (channel_mix % 3) + 1
+							print("output tone=" + str(output_tone))
+							channel_mix = (channel_mix + 1) % 3
+								
+
+						if True:
+
+							# detect if channel 1 needs priority this frame
+							# - its volume is on, and the alternative frame mix flag is good
+							c1p = vol1 == 0 and mix
+
+							# don't give channel 2 priority if tone is the same and channel1 is playing
+							c1f = (registers[1][i] << 4) + registers[0][i] 
+							c2f = (registers[3][i] << 4) + registers[2][i] 
+							sametone = (c1f == c2f/2) or (c1f == c2f * 2) or (c1f == c2f)
+							sametone = sametone and (vol1 == vol2) and (vol1 == 0)
+
+							if vol1 == 0 and sametone: #diff < 100: #registers[0][i] == registers[2][i] and registers[1][i] == registers[2][i] and vol1 == 0:
+								c1p = True
+								print("  NOTE: channel 1 & channel 2 have same tone")
+
+							
+
+							# replace channel 1 data with channel 2 data
+							# if, channel2 is active, but c1 doesn't have priority this frame
+							if vol2 == 0 and not c1p:# and vol1 != 0:
+								output_tone = 2
+
+							# if no volume on tone1, we can look at channel 3 too
+							if USE_TONE3:
+								#if registers[7][i] == 15:
+								if vol1 == 15 and vol2 == 15 and vol3 == 0 and not mix:# and not c1p and output_tone != 2:
+									print("tone3 active")
+									output_tone = 3
 
 					# pick which tone to output
 					if output_tone == 1:
-						# do nothing
+						# do nothing, because tone1 register frequency already setup
 						output_tone = 1
 					elif output_tone == 2:
+						# replace tone 1 frequency with tone 2 frequency
 						registers[0][i] = registers[2][i]
 						registers[1][i] = registers[3][i]
 						registers[7][i] = registers[8][i]
 					elif output_tone == 3:
+						# replace tone 1 frequency with tone 3 frequency
 						registers[0][i] = registers[4][i]
 						registers[1][i] = registers[5][i]
 						registers[7][i] = registers[9][i]
@@ -617,6 +669,7 @@ if __name__ == '__main__':
 	parser.add_argument("-a", "--attenuation", default="444", metavar="<nnn>", help="Set attenuation threshold for each channel, 3 character string where each character is 0-F and 0 is loudest, 4 is 50%, F is quietest, default: 444")
 	parser.add_argument("-t", "--transpose", default="000", metavar="<nnn>", help="Set octaves to transpose for each channel, where 1 is +1 octave and F is -1 octave.")
 	parser.add_argument("-c", "--channels", default="123", metavar="[1][2][3]", help="Set which channels will be included in the conversion, default 123, which means all 3 channels")
+	parser.add_argument("-q", "--technique", default=2, metavar="<n>", help="Set which downmix technique to use 1 or 2.")
 
 	args = parser.parse_args()
 
@@ -654,10 +707,13 @@ if __name__ == '__main__':
 	VgmElectron.ENABLE_CHANNEL2 = args.channels.find("2") >= 0
 	VgmElectron.ENABLE_CHANNEL3 = args.channels.find("3") >= 0
 
-
 	print("Channel 1: Enabled=" + str(VgmElectron.ENABLE_CHANNEL1) + ", Transpose=" + str(VgmElectron.TRANSPOSE_OCTAVES1) + ", Attenuation="+str(VgmElectron.ATTENTUATION_THRESHOLD1))
 	print("Channel 2: Enabled=" + str(VgmElectron.ENABLE_CHANNEL2) + ", Transpose=" + str(VgmElectron.TRANSPOSE_OCTAVES2) + ", Attenuation="+str(VgmElectron.ATTENTUATION_THRESHOLD2))
 	print("Channel 3: Enabled=" + str(VgmElectron.ENABLE_CHANNEL3) + ", Transpose=" + str(VgmElectron.TRANSPOSE_OCTAVES3) + ", Attenuation="+str(VgmElectron.ATTENTUATION_THRESHOLD3))
+
+	# technique
+	VgmElectron.USE_TECHNIQUE = int(args.technique)
+	print("Using technique " + str(VgmElectron.USE_TECHNIQUE))
 
 	# check for missing files
 	if not os.path.isfile(src):
