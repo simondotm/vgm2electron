@@ -10,7 +10,8 @@
 *.huf
 *.splitopt
 *.lz
-*.bin
+
+#*.bin
 *.lzw
 *.zst
 packer/
