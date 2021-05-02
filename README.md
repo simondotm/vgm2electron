@@ -54,6 +54,8 @@ The script also emits a binary byte stream of the VGM music as raw ULA data (`<f
 
 The ULA data is pretty big, but it tends to compress quite well, so it is possible to use this data on actual Acorn Electron hardware from an 6502 assembler music driver for example.
 
+TODO: I really need to append an `0x01` byte at the end of the ULA bin stream to signify end of data! `0x00` is volume off, and `0x01` should never actually be output in the wild so we can use it as an EOF token.
+
 ## Notes
 
 
@@ -65,5 +67,8 @@ Some better approaches might be:
 
 # Related Projects
 
-See also the good work to get music playing on Acorn Electon by [Negative Phase](https://github.com/NegativeCharge/Releases)
+See also the good work to get music playing on Acorn Electron by [Negative Phase](https://github.com/NegativeCharge/Releases)
 
+A 6502 music player for the ULA BIN files this script generates also by Negative Phase - https://github.com/NegativeCharge/vgm2electron-Player
+
+And also another 6502 Electron music player by TôBach - https://github.com/OSToastBach/Electro-Player
